@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>가위바위보 설거지빵</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    h1 { font-size: 2rem; margin-bottom: 0.3rem; }
+    h2 { font-size: 1.4rem; margin-bottom: 1rem; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+
+    .screen { display: none; text-align: center; width: 100%; max-width: 540px; padding: 0 20px; }
+    .screen.active { display: block; }
+
+    input, .code-input {
+      padding: 14px 20px;
+      font-size: 1.1rem;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #16213e;
+      color: #eee;
+      outline: none;
+      width: 240px;
+      text-align: center;
+    }
+
+    input:focus, .code-input:focus { border-color: #e94560; }
+
+    .code-input {
+      width: 140px;
+      font-size: 1.4rem;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      font-weight: 900;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      font-size: 1.05rem;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.95); }
+    .btn-primary { background: #e94560; }
+    .btn-secondary { background: #0f3460; border: 2px solid #e94560; }
+    .btn-small { padding: 10px 20px; font-size: 0.95rem; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+
+    .btn-row { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+
+    /* 입장 화면 */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 24px 0;
+      color: #555;
+      font-size: 0.9rem;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #333;
+    }
+
+    .join-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .error-msg {
+      color: #e94560;
+      font-size: 0.9rem;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+
+    /* 로비 화면 */
+    .room-code-display {
+      display: inline-block;
+      background: #16213e;
+      border: 3px dashed #e94560;
+      border-radius: 16px;
+      padding: 16px 32px;
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: 12px;
+      color: #e94560;
+      margin: 16px 0;
+    }
+
+    .room-code-hint {
+      color: #666;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+
+    .player-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .player-tag {
+      padding: 8px 18px;
+      background: #16213e;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 1rem;
+      border: 2px solid #333;
+    }
+
+    .player-tag.host { border-color: #e94560; }
+    .player-tag.me { background: #2a1a3e; }
+
+    .player-count { color: #888; margin-bottom: 10px; }
+
+    /* 게임 화면 */
+    .choices {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .choice-btn {
+      width: 120px;
+      height: 120px;
+      border: 3px solid #333;
+      border-radius: 20px;
+      background: #16213e;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      gap: 8px;
+    }
+
+    .choice-btn .emoji { font-size: 3rem; }
+    .choice-btn .label { font-size: 1rem; color: #ccc; font-weight: 600; }
+
+    .choice-btn:hover { border-color: #e94560; transform: translateY(-4px); }
+    .choice-btn:active { transform: scale(0.95); }
+    .choice-btn.selected {
+      border-color: #e94560;
+      background: #2a1a3e;
+      box-shadow: 0 0 20px rgba(233, 69, 96, 0.3);
+    }
+    .choice-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+    .status { font-size: 1.1rem; color: #888; min-height: 30px; }
+
+    .round-info { color: #888; margin-bottom: 4px; font-size: 0.95rem; }
+
+    /* 결과 화면 */
+    .result-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 60px;
+      overflow-y: auto;
+      animation: fadeIn 0.3s;
+    }
+
+    .result-overlay.show { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .result-header-emoji { font-size: 4rem; margin-bottom: 8px; }
+
+    .result-header-text {
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 24px;
+    }
+
+    .result-header-text.win { color: #4ade80; }
+    .result-header-text.lose { color: #e94560; }
+    .result-header-text.draw { color: #facc15; }
+
+    .result-table {
+      width: 90%;
+      max-width: 440px;
+      margin-bottom: 24px;
+    }
+
+    .result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .result-row.winner { background: rgba(74, 222, 128, 0.15); border: 2px solid #4ade80; }
+    .result-row.loser { background: rgba(233, 69, 96, 0.1); border: 2px solid #444; }
+    .result-row.drawer { background: rgba(250, 204, 21, 0.1); border: 2px solid #666; }
+    .result-row.is-me { box-shadow: 0 0 0 2px #e94560; }
+
+    .result-row .rr-name { flex: 1; text-align: left; }
+    .result-row .rr-choice { font-size: 1.8rem; margin: 0 12px; }
+    .result-row .rr-badge {
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .rr-badge.win { background: #4ade80; color: #000; }
+    .rr-badge.lose { background: #e94560; color: #fff; }
+    .rr-badge.draw { background: #facc15; color: #000; }
+
+    /* 스코어보드 */
+    .scoreboard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin: 16px 0;
+      width: 90%;
+      max-width: 440px;
+    }
+
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: #16213e;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .sb-item .sb-name { font-weight: 600; }
+    .sb-w { color: #4ade80; }
+    .sb-d { color: #facc15; }
+    .sb-l { color: #e94560; }
+
+    /* 토스트 */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #16213e;
+      border: 2px solid #e94560;
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      z-index: 200;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <!-- 입장 화면 -->
+  <div class="screen active" id="screen-login">
+    <h1>가위바위보 설거지빵</h1>
+    <p class="subtitle">방을 만들거나, 방 코드로 참여하세요</p>
+    <input id="nameInput" type="text" placeholder="이름 입력" maxlength="10" autofocus>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="createRoom()">방 만들기</button>
+    </div>
+    <div class="divider">또는</div>
+    <div class="join-row">
+      <input class="code-input" id="codeInput" type="text" placeholder="CODE" maxlength="4">
+      <button class="btn btn-secondary" onclick="joinRoom()">참여</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- 로비 화면 -->
+  <div class="screen" id="screen-lobby">
+    <h2>대기실</h2>
+    <div class="room-code-display" id="lobbyCode"></div>
+    <div class="room-code-hint">이 코드를 같은 네트워크의 동료에게 공유하세요</div>
+    <div class="player-count" id="playerCount"></div>
+    <div class="player-list" id="playerList"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="startBtn" onclick="startGame()" style="display:none">게임 시작</button>
+    </div>
+    <div class="error-msg" id="lobbyError"></div>
+  </div>
+
+  <!-- 게임 화면 -->
+  <div class="screen" id="screen-game">
+    <div class="round-info">라운드 <span id="roundNum">1</span></div>
+    <div class="player-list" id="gamePlayers"></div>
+    <div class="choices">
+      <button class="choice-btn" onclick="choose('가위')">
+        <span class="emoji">&#9996;&#65039;</span>
+        <span class="label">가위</span>
+      </button>
+      <button class="choice-btn" onclick="choose('바위')">
+        <span class="emoji">&#9994;</span>
+        <span class="label">바위</span>
+      </button>
+      <button class="choice-btn" onclick="choose('보')">
+        <span class="emoji">&#128400;</span>
+        <span class="label">보</span>
+      </button>
+    </div>
+    <div class="status" id="status">선택하세요!</div>
+  </div>
+
+  <!-- 결과 오버레이 -->
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-header-emoji" id="resultEmoji"></div>
+    <div class="result-header-text" id="resultText"></div>
+    <div class="result-table" id="resultTable"></div>
+    <div class="scoreboard" id="scoreboard"></div>
+    <div class="btn-row" style="margin-top: 8px; margin-bottom: 40px;">
+      <button class="btn btn-primary" id="nextRoundBtn" onclick="nextRound()">다음 라운드</button>
+    </div>
+  </div>
+
+  <!-- 토스트 -->
+  <div class="toast" id="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const $ = (id) => document.getElementById(id);
+
+    let myName = '';
+    let myChoice = null;
+    let isHost = false;
+    let currentRound = 1;
+
+    const choiceEmoji = { '가위': '\u270C\uFE0F', '바위': '\u270A', '보': '\uD83D\uDD90\uFE0F' };
+
+    // 화면 전환
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+      $(id).classList.add('active');
+    }
+
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // 엔터키
+    $('nameInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') createRoom();
+    });
+    $('codeInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinRoom();
+    });
+
+    function getName() {
+      const name = $('nameInput').value.trim();
+      if (!name) {
+        $('nameInput').focus();
+        $('errorMsg').textContent = '이름을 입력하세요';
+        return null;
+      }
+      return name;
+    }
+
+    function createRoom() {
+      const name = getName();
+      if (!name) return;
+      myName = name;
+      socket.emit('create-room', name);
+    }
+
+    function joinRoom() {
+      const name = getName();
+      if (!name) return;
+      const code = $('codeInput').value.trim().toUpperCase();
+      if (!code || code.length !== 4) {
+        $('errorMsg').textContent = '4자리 방 코드를 입력하세요';
+        return;
+      }
+      myName = name;
+      socket.emit('join-room', { name, code });
+    }
+
+    // 방 업데이트
+    socket.on('room-update', (room) => {
+      showScreen('screen-lobby');
+      $('lobbyCode').textContent = room.code;
+      $('playerCount').textContent = `참가자 ${room.players.length}명`;
+
+      const me = room.players.find((p) => p.name === myName);
+      isHost = me?.isHost || false;
+
+      $('playerList').innerHTML = room.players
+        .map((p) => {
+          const classes = ['player-tag'];
+          if (p.isHost) classes.push('host');
+          if (p.name === myName) classes.push('me');
+          return `<span class="${classes.join(' ')}">${p.name}${p.isHost ? ' (방장)' : ''}</span>`;
+        })
+        .join('');
+
+      if (isHost) {
+        $('startBtn').style.display = 'inline-block';
+        $('startBtn').disabled = room.players.length < 2;
+      } else {
+        $('startBtn').style.display = 'none';
+      }
+    });
+
+    function startGame() {
+      socket.emit('start-game');
+    }
+
+    // 게임 시작
+    socket.on('game-start', (data) => {
+      myChoice = null;
+      currentRound = data.round;
+      $('resultOverlay').classList.remove('show');
+
+      showScreen('screen-game');
+      $('roundNum').textContent = data.round;
+      $('status').textContent = '선택하세요!';
+
+      document.querySelectorAll('.choice-btn').forEach((btn) => {
+        btn.classList.remove('selected', 'disabled');
+      });
+    });
+
+    function choose(choice) {
+      if (myChoice) return;
+      myChoice = choice;
+      socket.emit('choose', choice);
+
+      document.querySelectorAll('.choice-btn').forEach((btn) => {
+        const label = btn.querySelector('.label').textContent;
+        if (label === choice) btn.classList.add('selected');
+        else btn.classList.add('disabled');
+      });
+
+      $('status').textContent = '다른 사람 기다리는 중...';
+    }
+
+    socket.on('choose-progress', ({ chosen, total }) => {
+      if (myChoice) {
+        $('status').textContent = `선택 완료 ${chosen}/${total}명`;
+      } else {
+        $('status').textContent = `${chosen}/${total}명 선택 완료 - 빨리 고르세요!`;
+      }
+    });
+
+    // 결과
+    socket.on('round-result', (data) => {
+      const me = data.results.find((r) => r.name === myName);
+
+      const resultMap = {
+        win: { emoji: '\uD83C\uDF89', text: '승리! 설거지 면제!' },
+        lose: { emoji: '\uD83E\uDDF9', text: '패배... 설거지 당첨!' },
+        draw: { emoji: '\uD83E\uDD1D', text: '무승부! 다시!' },
+      };
+
+      const r = resultMap[me.result];
+      $('resultEmoji').textContent = r.emoji;
+      $('resultText').textContent = r.text;
+      $('resultText').className = 'result-header-text ' + me.result;
+
+      // 결과 테이블: 승자 먼저, 무승부, 패자 순
+      const order = { win: 0, draw: 1, lose: 2 };
+      const sorted = [...data.results].sort((a, b) => order[a.result] - order[b.result]);
+
+      $('resultTable').innerHTML = sorted
+        .map((p) => {
+          const rowClass = p.result === 'win' ? 'winner' : p.result === 'lose' ? 'loser' : 'drawer';
+          const meClass = p.name === myName ? ' is-me' : '';
+          const badgeLabel = p.result === 'win' ? '승' : p.result === 'lose' ? '패' : '무';
+          return `
+            <div class="result-row ${rowClass}${meClass}">
+              <span class="rr-name">${p.name}</span>
+              <span class="rr-choice">${choiceEmoji[p.choice]}</span>
+              <span class="rr-badge ${p.result}">${badgeLabel}</span>
+            </div>`;
+        })
+        .join('');
+
+      // 누적 스코어
+      $('scoreboard').innerHTML = data.scores
+        .map((s) => `
+          <div class="sb-item">
+            <span class="sb-name">${s.name}</span>
+            <span class="sb-w">${s.score.win}승</span>
+            <span class="sb-d">${s.score.draw}무</span>
+            <span class="sb-l">${s.score.lose}패</span>
+          </div>`)
+        .join('');
+
+      // 호스트만 다음 라운드 버튼, 나머지는 "대기 중" 표시
+      if (isHost) {
+        $('nextRoundBtn').textContent = '다음 라운드';
+        $('nextRoundBtn').onclick = nextRound;
+        $('nextRoundBtn').disabled = false;
+      } else {
+        $('nextRoundBtn').textContent = '방장이 다음 라운드를 시작합니다...';
+        $('nextRoundBtn').disabled = true;
+      }
+
+      $('resultOverlay').classList.add('show');
+    });
+
+    function nextRound() {
+      socket.emit('next-round');
+    }
+
+    // 에러
+    socket.on('error-msg', (msg) => {
+      $('errorMsg').textContent = msg;
+      $('lobbyError').textContent = msg;
+    });
+
+    // 퇴장 알림
+    socket.on('player-left', (name) => {
+      showToast(`${name} 님이 나갔습니다`);
+    });
+  </script>
+</body>
+</html>

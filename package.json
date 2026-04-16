@@ -1,0 +1,16 @@
+{
+  "name": "rps-game",
+  "version": "1.0.0",
+  "description": "가위바위보 실시간 대전 게임",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+  }
+}
