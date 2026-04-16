@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>가위바위보 설거지빵</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -147,6 +147,14 @@
       justify-content: center;
       gap: 16px;
       margin: 24px 0;
+    }
+
+    @media (max-width: 480px) {
+      .choices { gap: 10px; }
+      .choice-btn { width: 100px; height: 100px; }
+      .choice-btn .emoji { font-size: 2.4rem; }
+      .room-code-display { font-size: 2rem; letter-spacing: 8px; padding: 12px 24px; }
+      h1 { font-size: 1.6rem; }
     }
 
     .choice-btn {
