@@ -23,7 +23,7 @@
     h2 { font-size: 1.4rem; margin-bottom: 1rem; }
     .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
 
-    .screen { display: none; text-align: center; width: 100%; max-width: 540px; padding: 0 20px; }
+    .screen { display: none; text-align: center; width: 100%; max-width: 540px; padding: 0 20px; padding-bottom: 80px; }
     .screen.active { display: block; }
 
     input, .code-input {
@@ -280,6 +280,102 @@
     .sb-d { color: #facc15; }
     .sb-l { color: #e94560; }
 
+    /* 채팅 */
+    .chat-box {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-height: 260px;
+      background: #111;
+      border-top: 2px solid #333;
+      display: none;
+      flex-direction: column;
+      z-index: 50;
+    }
+
+    .chat-box.active { display: flex; }
+
+    .chat-toggle {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #e94560;
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      cursor: pointer;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 12px rgba(233, 69, 96, 0.4);
+    }
+
+    .chat-toggle.visible { display: flex; }
+
+    .chat-toggle .badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #facc15;
+      color: #000;
+      font-size: 0.7rem;
+      font-weight: 900;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chat-toggle .badge.show { display: flex; }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chat-msg { font-size: 0.9rem; line-height: 1.4; }
+    .chat-msg .cm-name { color: #e94560; font-weight: 700; margin-right: 6px; }
+    .chat-msg .cm-text { color: #ccc; }
+    .chat-msg.system { color: #666; font-size: 0.8rem; }
+
+    .chat-input-row {
+      display: flex;
+      border-top: 1px solid #333;
+    }
+
+    .chat-input-row input {
+      flex: 1;
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      border: none;
+      background: #1a1a2e;
+      color: #eee;
+      outline: none;
+      border-radius: 0;
+      width: 0;
+    }
+
+    .chat-input-row button {
+      padding: 12px 18px;
+      background: #e94560;
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
     /* 토스트 */
     .toast {
       position: fixed;
@@ -362,6 +458,21 @@
     </div>
   </div>
 
+  <!-- 채팅 토글 버튼 -->
+  <button class="chat-toggle" id="chatToggle" onclick="toggleChat()">
+    <span>&#128172;</span>
+    <span class="badge" id="chatBadge"></span>
+  </button>
+
+  <!-- 채팅 박스 -->
+  <div class="chat-box" id="chatBox">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input id="chatInput" type="text" placeholder="메시지 입력..." maxlength="200" autocomplete="off">
+      <button onclick="sendChat()">전송</button>
+    </div>
+  </div>
+
   <!-- 토스트 -->
   <div class="toast" id="toast"></div>
 
@@ -430,6 +541,7 @@
     // 방 업데이트
     socket.on('room-update', (room) => {
       showScreen('screen-lobby');
+      showChatToggle();
       $('lobbyCode').textContent = room.code;
       $('playerCount').textContent = `참가자 ${room.players.length}명`;
 
@@ -564,7 +676,60 @@
     // 퇴장 알림
     socket.on('player-left', (name) => {
       showToast(`${name} 님이 나갔습니다`);
+      addChatSystem(`${name} 님이 나갔습니다`);
     });
+
+    // 채팅
+    let chatOpen = false;
+    let unread = 0;
+
+    function showChatToggle() {
+      $('chatToggle').classList.add('visible');
+    }
+
+    function toggleChat() {
+      chatOpen = !chatOpen;
+      $('chatBox').classList.toggle('active', chatOpen);
+      if (chatOpen) {
+        unread = 0;
+        $('chatBadge').classList.remove('show');
+        $('chatInput').focus();
+        $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
+      }
+    }
+
+    function sendChat() {
+      const text = $('chatInput').value.trim();
+      if (!text) return;
+      socket.emit('chat', text);
+      $('chatInput').value = '';
+      $('chatInput').focus();
+    }
+
+    $('chatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendChat();
+    });
+
+    socket.on('chat', ({ name, text }) => {
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      div.innerHTML = `<span class="cm-name">${name}</span><span class="cm-text">${text.replace(/</g, '&lt;')}</span>`;
+      $('chatMessages').appendChild(div);
+      $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
+
+      if (!chatOpen) {
+        unread++;
+        $('chatBadge').textContent = unread > 9 ? '9+' : unread;
+        $('chatBadge').classList.add('show');
+      }
+    });
+
+    function addChatSystem(msg) {
+      const div = document.createElement('div');
+      div.className = 'chat-msg system';
+      div.textContent = msg;
+      $('chatMessages').appendChild(div);
+    }
   </script>
 </body>
 </html>

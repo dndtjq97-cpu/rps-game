@@ -147,6 +147,14 @@ io.on("connection", (socket) => {
     io.to(code).emit("game-start", { round: room.round, playerCount: room.players.length });
   });
 
+  socket.on("chat", (msg) => {
+    const code = socket.data?.roomCode;
+    if (!code || !rooms.has(code)) return;
+    const text = String(msg).slice(0, 200).trim();
+    if (!text) return;
+    io.to(code).emit("chat", { name: socket.data.name, text });
+  });
+
   socket.on("disconnect", () => {
     console.log(`퇴장: ${socket.id}`);
     const code = socket.data?.roomCode;
